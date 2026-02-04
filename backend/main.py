@@ -508,10 +508,67 @@ async def chat(
             response_data["message"] = "Here's your categorized email overview:"
 
         elif intent == "DELETE_EMAIL":
-            # This requires context from previous messages
-            # For now, return a message asking for clarification
-            response_data["message"] = "To delete an email, please specify which one by clicking the delete button on the email card, or tell me the sender or subject."
-            response_data["requires_clarification"] = True
+            # Handle natural language email deletion
+            sender = params.get("sender")
+            subject_keyword = params.get("subject_keyword")
+            email_index = params.get("email_index")
+            
+            logger.info(f"DELETE_EMAIL params: sender={sender}, subject={subject_keyword}, index={email_index}")
+            
+            email_to_delete = None
+            
+            # Option 1: Delete by email index (e.g., "delete email 2")
+            if email_index is not None:
+                try:
+                    index = int(email_index) - 1  # Convert to 0-based index
+                    if index >= 0:
+                        # Fetch the last emails shown to user
+                        emails = await gmail_service.fetch_emails(max_results=10)
+                        if 0 <= index < len(emails):
+                            email_to_delete = emails[index]
+                except (ValueError, TypeError):
+                    pass
+            
+            # Option 2: Delete by sender (e.g., "delete email from John")
+            if not email_to_delete and sender:
+                query = f"from:{sender}"
+                logger.info(f"Searching for emails with query: {query}")
+                found_emails = await gmail_service.fetch_emails_with_query(query, max_results=1)
+                if found_emails:
+                    email_to_delete = found_emails[0]
+            
+            # Option 3: Delete by subject keyword (e.g., "delete email about meeting")
+            if not email_to_delete and subject_keyword:
+                query = f"subject:{subject_keyword}"
+                logger.info(f"Searching for emails with query: {query}")
+                found_emails = await gmail_service.fetch_emails_with_query(query, max_results=1)
+                if found_emails:
+                    email_to_delete = found_emails[0]
+            
+            # Execute deletion if email was found
+            if email_to_delete:
+                email_id = email_to_delete.get("id")
+                email_subject = email_to_delete.get("subject", "No subject")
+                email_sender = email_to_delete.get("sender_name") or email_to_delete.get("sender_email", "Unknown")
+                
+                await gmail_service.delete_email(email_id)
+                logger.info(f"Successfully deleted email: {email_subject} from {email_sender}")
+                
+                response_data["message"] = f"✅ Successfully deleted email from **{email_sender}**: \"{email_subject}\""
+                response_data["deleted_email"] = {
+                    "id": email_id,
+                    "subject": email_subject,
+                    "sender": email_sender
+                }
+            else:
+                # No email found - ask for clarification
+                response_data["message"] = """I couldn't find an email matching that description. Please try:
+
+• **By sender**: "Delete the email from John" or "Delete email from support@company.com"
+• **By subject**: "Delete the email about meeting" or "Delete email with subject invoice"
+• **By number**: "Delete email 2" (refers to the emails I just showed you)
+• **Using UI**: Click the Delete button on any email card above"""
+                response_data["requires_clarification"] = True
 
         elif intent == "GENERAL_CHAT":
             # Provide helpful information about capabilities
