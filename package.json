@@ -1,0 +1,30 @@
+{
+  "name": "ai-email-assistant",
+  "version": "1.0.0",
+  "description": "AI-powered email management assistant",
+  "scripts": {
+    "install:backend": "cd backend && pip install -r requirements.txt",
+    "install:frontend": "cd frontend && npm install",
+    "install:all": "npm run install:backend && npm run install:frontend",
+    "dev:backend": "cd backend && python main.py",
+    "dev:frontend": "cd frontend && npm run dev",
+    "test:backend": "cd backend && pytest",
+    "deploy:backend": "cd backend && vercel --prod",
+    "deploy:frontend": "cd frontend && vercel --prod"
+  },
+  "repository": {
+    "type": "git",
+    "url": "your-repo-url"
+  },
+  "keywords": [
+    "ai",
+    "email",
+    "gmail",
+    "assistant",
+    "openai",
+    "fastapi",
+    "nextjs"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
